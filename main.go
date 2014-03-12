@@ -1,19 +1,26 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net"
-	"os"
 	"sync"
 )
 
 func main() {
-	if len(os.Args) != 2 {
+	fast := false
+	fastUsage := "lookup PTR in parallel"
+	flag.BoolVar(&fast, "fast", false, fastUsage)
+	flag.BoolVar(&fast, "f", false, fastUsage+" (shorthand)")
+
+	flag.Parse()
+
+	args := flag.Args()
+	if len(args) != 1 {
 		log.Fatal("Required argument \"NET/MASK\" missing")
 	}
-
-	block := os.Args[1]
+	block := args[0]
 
 	ip, ipnet, err := net.ParseCIDR(block)
 	if err != nil {
@@ -23,16 +30,21 @@ func main() {
 	var wg sync.WaitGroup
 
 	for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); incIP(ip) {
-		wg.Add(1)
 		myip := ip.String()
-		go revIP(myip, wg)
+		if fast {
+			wg.Add(1)
+			go func(myip string) {
+				defer wg.Done()
+				revIP(myip)
+			}(ip.String())
+		} else {
+			revIP(myip)
+		}
 	}
 	wg.Wait()
-
 }
 
-func revIP(ip string, wg sync.WaitGroup) {
-	defer wg.Done()
+func revIP(ip string) {
 	ptr, _ := net.LookupAddr(ip)
 	ptrs := ""
 	for _, v := range ptr {
