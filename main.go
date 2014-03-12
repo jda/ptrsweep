@@ -34,7 +34,11 @@ func main() {
 func revIP(ip string, wg sync.WaitGroup) {
 	defer wg.Done()
 	ptr, _ := net.LookupAddr(ip)
-	fmt.Printf("%s,%s\n", ip, ptr)
+	ptrs := ""
+	for _, v := range ptr {
+		ptrs += "," + v
+	}
+	fmt.Printf("%s%s\n", ip, ptrs)
 }
 
 func incIP(ip net.IP) {
